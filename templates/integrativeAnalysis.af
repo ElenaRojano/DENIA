@@ -1,0 +1,23 @@
+##########################################################
+# AUTOFLOW TEMPLATE
+# Seoane P. & Rojano E., 2023
+# DESCRIPTION: Workflow to perform integrative analysis
+# All rights reserved
+##########################################################
+
+#poss_genes;datasetsArray;hunterFolders;prev_genes
+
+select_functional_clusters_[$datasets]){
+	# For each dataset, select co-expression clusters for functional analysis with common prevalent DEGs.
+	source ~soft_bio_267/initializes/init_python
+	mkdir coexp_clusters
+	if [ -s $common_prev_genes ]; then
+		$common_prev_genes=$poss_genes # If prev_genes empty, use poss_genes instead
+	fi
+	?
+	grep -F -f $common_prev_genes $hunterFolders/(*)/(*)_FEnr/hunter_results_table_annotated.txt | cut -f 1,25 > (*)_genes_and_clusters
+	grep -F -f $common_prev_genes $hunterFolders/(*)/(*)_FEnr/hunter_results_table_annotated.txt | cut -f 25 | sort -u > coexp_clusters/(*)_coexp_clusters
+	## For each cluster in coexp_clusters/(*)_coexp_clusters analyse its functional report.
+	grep -w -F -f coexp_clusters/(*)_coexp_clusters (*)_genes_and_clusters > (*)_genes_by_cluster
+	aggregate_column_data.py -i (*)_genes_by_cluster -x 2 -a 1 -s ',' > (*)_clusters_and_genes
+}
