@@ -14,7 +14,8 @@ mode=$1
 cur_dir=`pwd`
 CODE_PATH=$cur_dir/scripts
 datasets='aldh18a1;sqle;sprout;ischaemia'
-
+dst=`echo $datasets | tr ";" " "`
+datasetsArray=( $dst )
 
 if [ "$mode" == "0" ]; then
 	mkdir final_counts
@@ -47,8 +48,7 @@ if [ "$mode" == "2" ]; then
         mkdir tmpResults
         mkdir hunterFolders
         mkdir plots
-        dst=`echo $datasets | tr ";" " "`
-        datasetsArray=( $dst )
+
      	# Para crear los simbolicos apoyarte en index_execution
         # for i in ${datasetsArray[@]}
         # do
@@ -68,14 +68,14 @@ if [ "$mode" == "2" ]; then
                 \\$poss_genes=$poss_genes,
                 \\$common_prev_genes=$common_prev_genes" |  tr -d '[:space:]' `
         echo $var_info
-        AutoFlow -w templates/integrativeAnalysis.af -t '7-00:00:00' -m '40gb' -c 1 -o 'intResults/'$datasets -V $var_info $2 -n 'cal' #-u 1
+        AutoFlow -w templates/integrativeAnalysis.af -t '7-00:00:00' -m '40gb' -c 1 -o intResults -V $var_info $2 -n 'cal' #-u 1
 fi
 
 
 if [ "$mode" == "3" ]; then
   	mkdir selected_PPIs
         mkdir datasets
-        mkdir confident_results
+        mkdir clustering_results
         mkdir final_stats
         poss_genes=`cut -f 1 $cur_dir/tmpResults/group_assignation`
 	prev_genes=$cur_dir/tmpResults/common_prev_genes
@@ -100,48 +100,37 @@ if [ "$mode" == "3" ]; then
         # cut -f 1,3 $cur_dir/datasets/Homo_sapiens.GRCh38.108.uniprot.tsv | tail -n +2 | awk '{print $2 "\t" $1}' > $cur_dir/datasets/ensp_ensg_dict.tsv
         # rm $cur_dir/datasets/Homo_sapiens.GRCh38.108.uniprot.tsv.gz
 
-	echo "Prepare confident networks (PPI combined score >= 950) and select interactions"
-        #awk '{if ($3 >= 950) print $0}' $cur_dir/datasets/human_ppt_interactions.txt > $cur_dir/tmpResults/confident_human_interactions.txt
-        # Get all expressed genes
-        #cut -f 1 $cur_dir/hunterFolders/*/*_DEA/filtered_count_data.txt | sort -u | tail -n +2 > $cur_dir/tmpResults/all_datasets_expressed_genes
-        # Translate ENSG (expressed genes) to ENSP (to find matches in STRING interactions)
+        echo "Get all expressed genes"
+        # cut -f 1 $cur_dir/hunterFolders/*/*_DEA/filtered_count_data.txt | sort -u | tail -n +2 > $cur_dir/tmpResults/all_datasets_expressed_genes
+        ## Translate ENSG (expressed genes) to ENSP (to find matches in STRING interactions)
         # standard_name_replacer.py -I $cur_dir/datasets/ensp_ensg_dict.tsv -i $cur_dir/tmpResults/all_datasets_expressed_genes -c 1 -f 2 -t 1 -o $cur_dir/tmpResults/all_datasets_expressed_genes_transl -s "\t" 
-        # Get blacklist (no-expressed genes)
-        #grep -v -w -F -f $cur_dir/tmpResults/all_datasets_expressed_genes $cur_dir/hunterFolders/aldh18a1/aldh18a1_DEA/Common_results/* | cut -f 1 | tail -n +2 > $cur_dir/tmpResults/blacklist
-        #standard_name_replacer.py -I $cur_dir/datasets/ensp_ensg_dict.tsv -i $cur_dir/tmpResults/blacklist -c 1 -f 2 -t 1 -o $cur_dir/tmpResults/blacklist_transl -s "\t"
-        #grep -v -w -F -f $cur_dir/tmpResults/blacklist_transl $cur_dir/tmpResults/confident_human_interactions.txt > $cur_dir/tmpResults/confident_expressed_human_interactions.txt
-
-        echo "Clustering networks (rber_pots) and selection"
-        confident_ppi=$cur_dir/tmpResults/confident_expressed_human_interactions.txt
-        cdlib_clusterize.py -i $confident_ppi -o confident_results/rber_pots.txt -m rber_pots -s -S confident_results/rber_pots_stats.txt
-        #0       ENSG00000173692
-        $CODE_PATH/get_metrics.rb -s string -i confident_results/rber_pots.txt -t clusters > final_stats/rber_pots_cluster_stats.txt
-        # CON CLUSTERES HACER ENRIQUECIMIENTO FUNCIONAL
+        ## Get blacklist (no-expressed genes)
+        # grep -v -w -F -f $cur_dir/tmpResults/all_datasets_expressed_genes $cur_dir/hunterFolders/aldh18a1/aldh18a1_DEA/Common_results/* | cut -f 1 | tail -n +2 > $cur_dir/tmpResults/blacklist
+        # standard_name_replacer.py -I $cur_dir/datasets/ensp_ensg_dict.tsv -i $cur_dir/tmpResults/blacklist -c 1 -f 2 -t 1 -o $cur_dir/tmpResults/blacklist_transl -s "\t"
+	
+        echo "Prepare networks and select interactions"
+        #clustering_methods=( 'rber_pots' 'louvain' 'cpm' 'rb_pots' 'leiden' )
+        clustering_methods=( 'rber_pots' )
+        #combScores=( 300 950 )
+        combScores=( 950 )
+        for m in ${clustering_methods[@]}
+        do
+                for i in ${combScores[@]}
+                do
+                var_info=`echo -e "\\$network=$cur_dir/datasets/human_ppt_interactions.txt,
+                        \\$combScores=$i,
+                        \\$clustering_methods=$m,
+                        \\$dictionary=$cur_dir/datasets/ensp_ensg_dict.tsv,
+                        \\$CODE_PATH=$CODE_PATH,
+                        \\$cores=16,
+                        \\$blacklist=$cur_dir/tmpResults/blacklist_transl" |  tr -d '[:space:]' `
+                #echo $var_info
+                AutoFlow -w templates/clusteringAnalysis.af -t '7-00:00:00' -m '40gb' -c 1 -o clustering_results/"$m" -V $var_info $2 -n 'cal' #-u 1
+                done
+        done
 fi
 
-exit
+if [ "$mode" == "4" ]; then
+        echo "Generate result tables and reports"
 
-
-        exit
-        
-
-        #$CODE_PATH/code.rb -i
-        
-
-        #$CODE_PATH/string_ppi_selection.R -i $cur_dir/datasets/human_ppt_interactions.txt -c1 -c2 -k 950 -o $cur_dir/selected_PPIs/human_confident_PPI.txt
-
-        # Select pairs in which both nodes are in the all datasaet expressed genes file
-        #join by ENSP
-        ###merge_tabular.py $cur_dir/datasets/ensp_ensg_dict.tsv $cur_dir/datasets/ensp_geneName_dict.txt > $cur_dir/tmpResults/ensp_ensg_geneName_dict 
-        exit
-        echo 'Translating STRING ENSP codes to ENSG'
-
-        
-        ###sed -i 's/\"//g' $cur_dir/datasets/human_ppi_ensembl_genes.txt
-         echo 'Translating all expressed gene ENSG identifiers to gene name identifiers'
-        # Translate all_datasets_expressed_genes ENSEMBL gene ID to HGNC gene ID:
-        #standard_name_replacer.py -i $cur_dir/tmpResults/all_datasets_expressed_genes -I $cur_dir/datasets/protein_dictionary.txt -c 1 -f 1 -t 3 -o $cur_dir/tmpResults/all_datasets_expressed_genes_transl
-        exit
-
-
-        ###
+fi

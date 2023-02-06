@@ -15,4 +15,3 @@ deg_ceg_funct_analysis_[$datasets]){
 	functional_Hunter.R -f KgR -G MBC -A o -P 0.1 -m Human -i (*)_DEA -t E -c 10 -o (*)_FEnr
 	grep -w 'PREVALENT_DEG\|POSSIBLE_DEG' (*)_FEnr/hunter_results_table_annotated.txt | cut -f 1 > prevalent_degs/(*)
 }
-

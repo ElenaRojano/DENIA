@@ -1,0 +1,35 @@
+##########################################################
+# AUTOFLOW TEMPLATE
+# Seoane P. & Rojano E., 2023
+# DESCRIPTION: Workflow to perform integrative analysis
+# All rights reserved
+##########################################################
+
+network_selection_[$combScores]){
+	# Select networks according to nodes combined score
+	mkdir (*)_network
+	?
+    awk '{if ($3 >= 950) print $0}' $network > (*)_network/(*)_network.txt
+    grep -v -w -F -f $blacklist (*)_network/(*)_network.txt > (*)_network/(*)_filtered_network.txt
+}
+
+network_clustering_[$clustering_methods]){
+	# Perform clustering for each selected network according to the clustering method selected
+	mkdir (*)_results
+	source ~soft_bio_267/initializes/init_python
+	PATH="/mnt/scratch/users/bio_267_uma/elenarojano/NGS_projects/angiogenesis/results/DEGenesHunter_results/scripts":$PATH
+    export PATH
+	?
+	cdlib_clusterize.py -i !network_selection_!/$combScores"_network"/$combScores"_filtered_network.txt" -o (*)_results/(*).txt -m (*) -s -S (*)_results/(*)_stats.txt
+    get_metrics.rb -s string -i (*)_results/(*).txt -t clusters > (*)_results/(*)_cluster_stats.txt
+    standard_name_replacer.py -i (*)_results/(*).txt -I $dictionary -c 2 -f 1 -t 2 -o (*)_results/(*)_cluster_gene.txt
+    aggregate_column_data.py -i (*)_results/(*)_cluster_gene.txt -x 1 -a 2 -s ',' > (*)_results/(*)_cluster_gene_agg.txt
+}
+
+functional_analysis){
+	# Perform functional analysis for each cluster (We selected combScore = 950 and clustering_method = rber_pots)
+	source ~soft_bio_267/initializes/init_degenes_hunter
+	mkdir functional_results
+	?
+	clusters_to_enrichment.R -i !network_clustering_!/$clustering_methods"_results"/$clustering_methods"_cluster_gene_agg.txt" -w $cores -o functional_results/$m'_'$i'_functional_results' -f BP,CC,MF,KEGG,Reactome -k ENSEMBL
+}
