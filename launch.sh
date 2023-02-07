@@ -16,6 +16,7 @@ CODE_PATH=$cur_dir/scripts
 datasets='aldh18a1;sqle;sprout;ischaemia'
 dst=`echo $datasets | tr ";" " "`
 datasetsArray=( $dst )
+clustering_methods=( 'rber_pots' 'louvain' 'cpm' 'rb_pots' 'leiden' )
 
 if [ "$mode" == "0" ]; then
 	mkdir final_counts
@@ -49,20 +50,22 @@ if [ "$mode" == "2" ]; then
         mkdir hunterFolders
         mkdir plots
 
-     	# Para crear los simbolicos apoyarte en index_execution
+        ## Symbolic links to execution path:
         # for i in ${datasetsArray[@]}
         # do
         #         var=`grep $i $cur_dir/expResults/index_execution | cut -f 2`
         #         ln -s $var $cur_dir/hunterFolders/$i
         # done
-        # Combinar resultados de la ejecución anterior.
-        # De cada dataset buscar genes DEG en común y llevarlos a la plantilla
-        $CODE_PATH/venndiagrams.R -n "`echo $cur_dir/hunterFolders/*/prevalent_degs/* | tr ' ' ","`" -o $cur_dir/plots/vennDiagram 
+
+        $CODE_PATH/venndiagrams.R -c -n "`echo $cur_dir/hunterFolders/*/prevalent_degs/* | tr ' ' ","`" -t "`ls hunterFolders/*/prevalent_degs/* | cut -d ' ' -f 9 | cut -d '/' -f 2 | tr "\n" ','`" -o $cur_dir/plots/vennDiagram 
         get_venn_groups.rb -i "$cur_dir/hunterFolders/*/prevalent_degs/*" -o $cur_dir/tmpResults/group_assignation
-        poss_genes=`cut -f 1 $cur_dir/tmpResults/group_assignation`
+        cut -f 1 $cur_dir/tmpResults/group_assignation > $cur_dir/tmpResults/poss_genes
         grep ".*,.*,.*,.*" $cur_dir/tmpResults/group_assignation | cut -f 1 > $cur_dir/tmpResults/common_prev_genes
         # TODO PREPARAR GRÁFICAS VENN
 	common_prev_genes=$cur_dir/tmpResults/common_prev_genes
+        
+        ## Select CEGs
+
         var_info=`echo -e "\\$hunterFolders=$cur_dir/hunterFolders,
                 \\$datasets=$datasets,
                 \\$poss_genes=$poss_genes,
@@ -109,22 +112,21 @@ if [ "$mode" == "3" ]; then
         # standard_name_replacer.py -I $cur_dir/datasets/ensp_ensg_dict.tsv -i $cur_dir/tmpResults/blacklist -c 1 -f 2 -t 1 -o $cur_dir/tmpResults/blacklist_transl -s "\t"
 	
         echo "Prepare networks and select interactions"
-        #clustering_methods=( 'rber_pots' 'louvain' 'cpm' 'rb_pots' 'leiden' )
-        clustering_methods=( 'rber_pots' )
-        #combScores=( 300 950 )
-        combScores=( 950 )
+        #clustering_methods=( 'rber_pots' )
+        combScores=( 300 950 )
+        #combScores=( 950 )
         for m in ${clustering_methods[@]}
         do
                 for i in ${combScores[@]}
                 do
                 var_info=`echo -e "\\$network=$cur_dir/datasets/human_ppt_interactions.txt,
+                        \\$common_prev_genes=$cur_dir/tmpResults/common_prev_genes,
                         \\$combScores=$i,
                         \\$clustering_methods=$m,
                         \\$dictionary=$cur_dir/datasets/ensp_ensg_dict.tsv,
                         \\$CODE_PATH=$CODE_PATH,
                         \\$cores=16,
                         \\$blacklist=$cur_dir/tmpResults/blacklist_transl" |  tr -d '[:space:]' `
-                #echo $var_info
                 AutoFlow -w templates/clusteringAnalysis.af -t '7-00:00:00' -m '40gb' -c 1 -o clustering_results/"$m" -V $var_info $2 -n 'cal' #-u 1
                 done
         done
@@ -132,5 +134,11 @@ fi
 
 if [ "$mode" == "4" ]; then
         echo "Generate result tables and reports"
-
+        ## Por cada archivo de clústeres de STRING crear tablas como las del artículo
+        # 
+        # for i in ${clustering_methods[@]}
+        # do
+        #         var=`grep $i $cur_dir/clustering_results/index_execution | cut -f 2`
+        #         ln -s $var $cur_dir/hunterFolders/$i
+        # done
 fi

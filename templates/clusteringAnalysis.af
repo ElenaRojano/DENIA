@@ -24,6 +24,11 @@ network_clustering_[$clustering_methods]){
     get_metrics.rb -s string -i (*)_results/(*).txt -t clusters > (*)_results/(*)_cluster_stats.txt
     standard_name_replacer.py -i (*)_results/(*).txt -I $dictionary -c 2 -f 1 -t 2 -o (*)_results/(*)_cluster_gene.txt
     aggregate_column_data.py -i (*)_results/(*)_cluster_gene.txt -x 1 -a 2 -s ',' > (*)_results/(*)_cluster_gene_agg.txt
+    while read p; do
+        v=`grep -w $p (*)_results/(*)_cluster_gene_agg.txt | cut -f 1`
+        echo -e $v '\t' $p >> (*)_results/prev_genes_cluster.txt
+	done <$common_prev_genes
+	# In (*)_results/prev_genes_cluster.txt file will be the clusters in which the prevalent genes are for functional analysis.
 }
 
 functional_analysis){
@@ -31,5 +36,5 @@ functional_analysis){
 	source ~soft_bio_267/initializes/init_degenes_hunter
 	mkdir functional_results
 	?
-	clusters_to_enrichment.R -i !network_clustering_!/$clustering_methods"_results"/$clustering_methods"_cluster_gene_agg.txt" -w $cores -o functional_results/$m'_'$i'_functional_results' -f BP,CC,MF,KEGG,Reactome -k ENSEMBL
+	clusters_to_enrichment.R -i !network_clustering_!/$clustering_methods"_results"/$clustering_methods"_cluster_gene_agg.txt" -w $cores -o functional_results -f BP,CC,MF,KEGG,Reactome -k ENSEMBL
 }
