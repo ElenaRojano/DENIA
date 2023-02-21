@@ -5,12 +5,10 @@
 # All rights reserved
 ##########################################################
 
-#poss_genes;datasetsArray;hunterFolders;prev_genes
-
 select_functional_clusters_[$datasets]){
 	# For each dataset, select co-expression clusters for functional analysis with common prevalent DEGs.
 	source ~soft_bio_267/initializes/init_python
-	mkdir coexp_clusters
+	mkdir coexp_genes
 	?
 	cut -f 1,18 $hunterFolders/(*)/(*)_FEnr/hunter_results_table_annotated.txt > (*)_genes_and_clusters
 	
@@ -19,6 +17,5 @@ select_functional_clusters_[$datasets]){
 		echo $cluster >> clusters
 		grep -w $cluster (*)_genes_and_clusters | cut -f 1 > $cluster"_cluster_genes"
 	done <$common_prev_genes
-	## For each cluster in coexp_clusters/(*)_coexp_clusters analyse its functional report.
-	#aggregate_column_data.py -i (*)_genes_by_cluster -x 2 -a 1 -s ',' > (*)_clusters_and_genes
+	cat *_cluster_genes > coexp_genes/(*)
 }

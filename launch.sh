@@ -13,19 +13,28 @@ source ~soft_bio_267/initializes/init_R
 mode=$1
 cur_dir=`pwd`
 CODE_PATH=$cur_dir/scripts
-datasets='aldh18a1;sqle;sprout;ischaemia'
+datasets='aldh18a1;ischaemia;sprout;sqle'
 dst=`echo $datasets | tr ";" " "`
 datasetsArray=( $dst )
 clustering_methods=( 'rber_pots' 'louvain' 'cpm' 'rb_pots' 'leiden' )
 
+mkdir final_counts
+mkdir targets
+mkdir expResults
+mkdir selected_PPIs
+mkdir datasets
+mkdir clustering_results
+mkdir intResults
+mkdir tmpResults
+mkdir hunterFolders
+mkdir plots
+
 if [ "$mode" == "0" ]; then
-	mkdir final_counts
 	cp /mnt/home/users/bio_267_uma/beammzgz/projects/scRNA_SQLE/analysis/results/DEGenesHunter_results/ctrl_vs_mut/final_counts.txt $cur_dir/final_counts/sqle_final_counts.txt
 	cp /mnt/scratch/users/bio_267_uma/beammzgz/scRNA_ALDH18A1/analysis/results/DEGenesHunter_results/ctrl_vs_mut/final_counts.txt $cur_dir/final_counts/aldh18a1_final_counts.txt
 	cp /mnt/scratch/users/bio_267_uma/beammzgz/HUVEC/analysis/results/DEGenesHunter_results/ctrl_vs_mut/final_counts.txt $cur_dir/final_counts/sprout_final_counts.txt
 	cp /mnt/home/users/bio_267_uma/beammzgz/projects/angiogenesis/analysis/results/DEGenesHunter_results/ctrl_vs_mut/final_counts.txt $cur_dir/final_counts/ischaemia_final_counts.txt
 
-	mkdir targets
 	cp /mnt/home/users/bio_267_uma/beammzgz/projects/scRNA_SQLE/analysis/DEG_workflow_ori/TARGETS/ctrl_vs_mut_target.txt $cur_dir/targets/sqle_target.txt
 	cp /mnt/scratch/users/bio_267_uma/beammzgz/scRNA_ALDH18A1/analysis/DEG_workflow_ori/TARGETS/ctrl_vs_mut_target.txt $cur_dir/targets/aldh18a1_target.txt
 	cp /mnt/scratch/users/bio_267_uma/beammzgz/HUVEC/analysis/DEG_workflow_ori/TARGETS/ctrl_vs_mut_target.txt $cur_dir/targets/sprout_target.txt
@@ -34,7 +43,6 @@ fi
 
 if [ "$mode" == "1" ]; then
         echo "DEA, CEA and functional analysis"
-        mkdir expResults
         packages='WDE'
         var_info=`echo -e "\\$packages=$packages,
 		\\$final_counts_folder=$cur_dir/final_counts,
@@ -45,10 +53,6 @@ fi
 
 if [ "$mode" == "2" ]; then
         echo "Integrative analysis"
-        mkdir intResults
-        mkdir tmpResults
-        mkdir hunterFolders
-        mkdir plots
 
         ## Symbolic links to execution path:
         # for i in ${datasetsArray[@]}
@@ -57,29 +61,21 @@ if [ "$mode" == "2" ]; then
         #         ln -s $var $cur_dir/hunterFolders/$i
         # done
 
-        $CODE_PATH/venndiagrams.R -c -n "`echo $cur_dir/hunterFolders/*/prevalent_degs/* | tr ' ' ","`" -t "`ls hunterFolders/*/prevalent_degs/* | cut -d ' ' -f 9 | cut -d '/' -f 2 | tr "\n" ','`" -o $cur_dir/plots/vennDiagram 
+        $CODE_PATH/venndiagrams.R -c -n "`echo $cur_dir/hunterFolders/*/prevalent_degs/* | tr ' ' ","`" -t "`ls hunterFolders/*/prevalent_degs/* | cut -d ' ' -f 9 | cut -d '/' -f 2 | tr "\n" ','`" -o $cur_dir/plots/vennDiagram_DEG 
         get_venn_groups.rb -i "$cur_dir/hunterFolders/*/prevalent_degs/*" -o $cur_dir/tmpResults/group_assignation
         cut -f 1 $cur_dir/tmpResults/group_assignation > $cur_dir/tmpResults/poss_genes
         grep ".*,.*,.*,.*" $cur_dir/tmpResults/group_assignation | cut -f 1 > $cur_dir/tmpResults/common_prev_genes
-        # TODO PREPARAR GRÁFICAS VENN
-	common_prev_genes=$cur_dir/tmpResults/common_prev_genes
         
-        ## Select CEGs
+        # TODO: prepare variable with genes by study (the ones they characterised in Rohlenova, Rosano and Harvey)
 
         var_info=`echo -e "\\$hunterFolders=$cur_dir/hunterFolders,
                 \\$datasets=$datasets,
-                \\$poss_genes=$poss_genes,
-                \\$common_prev_genes=$common_prev_genes" |  tr -d '[:space:]' `
-        echo $var_info
-        AutoFlow -w templates/integrativeAnalysis.af -t '7-00:00:00' -m '40gb' -c 1 -o intResults -V $var_info $2 -n 'cal' #-u 1
+                \\$common_prev_genes=$cur_dir/tmpResults/common_prev_genes" |  tr -d '[:space:]' `
+        AutoFlow -w templates/integrativeAnalysis.af -t '7-00:00:00' -m '40gb' -c 1 -o intResults -V $var_info $2 -n 'cal' #-u 1       
 fi
 
 
 if [ "$mode" == "3" ]; then
-  	mkdir selected_PPIs
-        mkdir datasets
-        mkdir clustering_results
-        mkdir final_stats
         poss_genes=`cut -f 1 $cur_dir/tmpResults/group_assignation`
 	prev_genes=$cur_dir/tmpResults/common_prev_genes
         # echo "Download and decompress STRING data (human)"
@@ -112,9 +108,7 @@ if [ "$mode" == "3" ]; then
         # standard_name_replacer.py -I $cur_dir/datasets/ensp_ensg_dict.tsv -i $cur_dir/tmpResults/blacklist -c 1 -f 2 -t 1 -o $cur_dir/tmpResults/blacklist_transl -s "\t"
 	
         echo "Prepare networks and select interactions"
-        #clustering_methods=( 'rber_pots' )
         combScores=( 300 950 )
-        #combScores=( 950 )
         for m in ${clustering_methods[@]}
         do
                 for i in ${combScores[@]}
@@ -127,13 +121,62 @@ if [ "$mode" == "3" ]; then
                         \\$CODE_PATH=$CODE_PATH,
                         \\$cores=16,
                         \\$blacklist=$cur_dir/tmpResults/blacklist_transl" |  tr -d '[:space:]' `
-                AutoFlow -w templates/clusteringAnalysis.af -t '7-00:00:00' -m '40gb' -c 1 -o clustering_results/"$m" -V $var_info $2 -n 'cal' #-u 1
+                AutoFlow -w templates/clusteringAnalysis.af -t '7-00:00:00' -m '40gb' -c 1 -o clustering_results/"$i"_"$m" -V $var_info $2 -n 'cal' #-u 1
                 done
         done
 fi
 
 if [ "$mode" == "4" ]; then
+        source ~soft_bio_267/initializes/init_report_html
         echo "Generate result tables and reports"
+        rm -rf final_stats
+        mkdir final_stats
+        
+        # mkdir 950_rber_pots_functional_results
+        
+        # echo 'Perform functional enrichment for rber_pots clustering in 950 network'
+        # clusters_to_enrichment.R -i clustering_results/950/cdlib_clusterize.py_0000/rber_pots/rber_pots_cluster_gene_agg.txt -w 16 -o 950_rber_pots_functional_results -f BP,CC,MF,KEGG,Reactome -k ENSEMBL        
+        # exit
+
+       $CODE_PATH/create_tables.rb -i "$cur_dir/hunterFolders/*/*_FEnr" -o final_stats/genes_expression_stats.txt
+        report_html -t templates/html_template.erb -d final_stats/genes_expression_stats.txt
+        
+        exit
+
+        for m in ${clustering_methods[@]}
+        do
+                ln -s $cur_dir/clustering_results/950/cdlib_clusterize.py_0000/$m/$m'_cluster_stats.txt' $cur_dir/final_stats_950/$m'_950_cluster_stats.txt'
+                ln -s $cur_dir/clustering_results/300/cdlib_clusterize.py_0000/$m/$m'_cluster_stats.txt' $cur_dir/final_stats_300/$m'_300_cluster_stats.txt'
+        done
+        
+        $CODE_PATH/venndiagrams.R -c -n "`echo $cur_dir/intResults/cut_000*/coexp_genes/* | tr ' ' ","`" -t "`ls $cur_dir/intResults/cut_000*/coexp_genes/* | cut -d '/' -f 14| tr "\n" ','`" -o $cur_dir/plots/vennDiagram_CEG
+        
+        for i in ${datasetsArray[@]}
+        do
+                cat $cur_dir/hunterFolders/*/prevalent_degs/$i $cur_dir/intResults/cut_000*/coexp_genes/$i > tmpResults/$i'_CEG_DEG'
+                # Preparar tabla 1
+                tail -n +2 $cur_dir/hunterFolders/$i/$i"_DEA"/filtered_count_data.txt | wc -l > tmpResults/$i'_expressed_genes'
+                grep 'POSSIBLE_DEG' $cur_dir/hunterFolders/$i/$i'_FEnr/hunter_results_table_annotated.txt' | wc -l > tmpResults/$i'_possible_DEG'
+                grep 'PREVALENT_DEG' $cur_dir/hunterFolders/$i/$i'_FEnr/hunter_results_table_annotated.txt' | wc -l > tmpResults/$i'_prevalent_DEG'
+
+        done
+
+        exit
+
+        $CODE_PATH/venndiagrams.R -c -n "`echo $cur_dir/tmpResults/*_CEG_DEG | tr ' ' ","`" -t "`ls $cur_dir/intResults/cut_000*/coexp_genes/* | cut -d '/' -f 14| tr "\n" ','`" -o $cur_dir/plots/vennDiagram_DEG_CEG
+        
+
+        merge_tabular.py final_stats_300/cpm_300_cluster_stats.txt final_stats_300/louvain_300_cluster_stats.txt final_stats_300/leiden_300_cluster_stats.txt final_stats_300/rber_pots_300_cluster_stats.txt final_stats_300/rb_pots_300_cluster_stats.txt > final_stats_300/all_methods_stats_300.txt
+        merge_tabular.py final_stats_950/cpm_950_cluster_stats.txt final_stats_950/louvain_950_cluster_stats.txt final_stats_950/leiden_950_cluster_stats.txt final_stats_950/rber_pots_950_cluster_stats.txt final_stats_950/rb_pots_950_cluster_stats.txt > final_stats_950/all_methods_stats_950.txt
+        #sed -i "1i Param\tcpm\tlouvain\tleiden\trber_pots\trb_pots" final_stats/all_methods_stats.txt
+        
+        #report_html -t templates/html_template.erb -d final_stats_950/all_methods_stats_950.txt
+        exit
+
+
+
+        #plots=`ls plots | tr "\n" ',' `
+
         ## Por cada archivo de clústeres de STRING crear tablas como las del artículo
         # 
         # for i in ${clustering_methods[@]}

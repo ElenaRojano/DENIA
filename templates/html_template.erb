@@ -1,0 +1,24 @@
+<h1> Comparison of prevalent DEGs and CEGs in the different datasets (aldh18a1, ischaemia, sprouting angiogenesis (sprout) and sqle) </h1> 
+
+<h2> Overlapping Prevalent DEGs </h2> 
+	
+<%= embed_pdf('plots/vennDiagram_DEG.pdf', 'width="600" height="600"') %>
+
+<h2> Overlapping Prevalent CEGs </h2> 
+	
+<%= embed_pdf('plots/vennDiagram_CEG.pdf', 'width="600" height="600"') %>
+
+<h2> Overlapping Prevalent DEGs and CEGs </h2> 
+	
+<%= embed_pdf('plots/vennDiagram_DEG_CEG.pdf', 'width="600" height="600"') %>
+
+<h1> Tables. </h1> 
+
+<h2> Table 1. Summary of the number of genes passing the counts per million (CPM) filter,
+possible differential expressed genes (DEGs) and prevalent DEGs for the four different
+datasets analysed. </h2>
+
+<%= table(id: 'genes_expression_stats.txt', text: true, header: false) do |table|
+		table.unshift(['Dataset', 'Expressed genes (after CPM filter)', 'Possible DEG', 'Prevalent DEG'])
+	end
+%>
