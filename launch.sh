@@ -75,38 +75,44 @@ if [ "$mode" == "2" ]; then
 fi
 
 
-if [ "$mode" == "3" ]; then
+if [ "$mode" == "D" ]; then
+        echo "Downloading datasets"
         poss_genes=`cut -f 1 $cur_dir/tmpResults/group_assignation`
 	prev_genes=$cur_dir/tmpResults/common_prev_genes
-        # echo "Download and decompress STRING data (human)"
-        # wget 'https://stringdb-static.org/download/protein.links.full.v11.0/9606.protein.links.full.v11.0.txt.gz' -O $cur_dir/datasets/string_data.txt.gz
-        # gunzip $cur_dir/datasets/string_data.txt.gz
-        # cut -d ' ' -f 1,2,16 $cur_dir/datasets/string_data.txt | tail -n +2 | sed 's/9606.//g' | tr ' ' "\t" > $cur_dir/datasets/human_ppt_interactions.txt
-        # rm $cur_dir/datasets/string_data.txt
+        echo "Download and decompress STRING data (human)"
+        wget 'https://stringdb-static.org/download/protein.links.full.v11.0/9606.protein.links.full.v11.0.txt.gz' -O $cur_dir/datasets/string_data.txt.gz
+        gunzip $cur_dir/datasets/string_data.txt.gz
+        cut -d ' ' -f 1,2,16 $cur_dir/datasets/string_data.txt | tail -n +2 | sed 's/9606.//g' | tr ' ' "\t" > $cur_dir/datasets/human_ppt_interactions.txt
+        rm $cur_dir/datasets/string_data.txt
 
         echo 'Getting ENSP-gene Name relationships'
 
-        # wget https://stringdb-static.org/download/protein.info.v11.5/9606.protein.info.v11.5.txt.gz -O $cur_dir/datasets/9606.protein.info.v11.5.txt.gz
-        # gunzip $cur_dir/datasets/9606.protein.info.v11.5.txt.gz
-        # cut -f 1,2 datasets/9606.protein.info.v11.5.txt | tail -n +2 > $cur_dir/datasets/ensp_geneName_dict.txt
-        # sed -i 's/9606.//g' $cur_dir/datasets/ensp_geneName_dict.txt
-        # rm $cur_dir/datasets/9606.protein.info.v11.5.txt
+        wget https://stringdb-static.org/download/protein.info.v11.5/9606.protein.info.v11.5.txt.gz -O $cur_dir/datasets/9606.protein.info.v11.5.txt.gz
+        gunzip $cur_dir/datasets/9606.protein.info.v11.5.txt.gz
+        cut -f 1,2 datasets/9606.protein.info.v11.5.txt | tail -n +2 > $cur_dir/datasets/ensp_geneName_dict.txt
+        sed -i 's/9606.//g' $cur_dir/datasets/ensp_geneName_dict.txt
+        rm $cur_dir/datasets/9606.protein.info.v11.5.txt
         
         echo 'Getting ENSG-ENSP relationships'
 
-        # wget https://ftp.ensembl.org/pub/release-108/tsv/homo_sapiens/Homo_sapiens.GRCh38.108.uniprot.tsv.gz -O $cur_dir/datasets/Homo_sapiens.GRCh38.108.uniprot.tsv.gz
-        # gunzip $cur_dir/datasets/Homo_sapiens.GRCh38.108.uniprot.tsv.gz
+        #wget https://ftp.ensembl.org/pub/release-108/tsv/homo_sapiens/Homo_sapiens.GRCh38.108.uniprot.tsv.gz -O $cur_dir/datasets/Homo_sapiens.GRCh38.108.uniprot.tsv.gz
+        #gunzip $cur_dir/datasets/Homo_sapiens.GRCh38.108.uniprot.tsv.gz
+        wget "https://stringdb-static.org/download/protein.aliases.v11.5/9606.protein.aliases.v11.5.txt.gz" -O $cur_dir/datasets/9606.protein.aliases.v11.5.txt.gz 
+        gunzip $cur_dir/datasets/9606.protein.aliases.v11.5.txt.gz
+        grep 'Ensembl_gene' $cur_dir/datasets/9606.protein.aliases.v11.5.txt | cut -f 1,2 | cut -d '.' -f 2 > $cur_dir/datasets/ensp_ensg_dict.tsv
         # cut -f 1,3 $cur_dir/datasets/Homo_sapiens.GRCh38.108.uniprot.tsv | tail -n +2 | awk '{print $2 "\t" $1}' > $cur_dir/datasets/ensp_ensg_dict.tsv
         # rm $cur_dir/datasets/Homo_sapiens.GRCh38.108.uniprot.tsv.gz
 
         echo "Get all expressed genes"
-        # cut -f 1 $cur_dir/hunterFolders/*/*_DEA/filtered_count_data.txt | sort -u | tail -n +2 > $cur_dir/tmpResults/all_datasets_expressed_genes
-        ## Translate ENSG (expressed genes) to ENSP (to find matches in STRING interactions)
-        # standard_name_replacer.py -I $cur_dir/datasets/ensp_ensg_dict.tsv -i $cur_dir/tmpResults/all_datasets_expressed_genes -c 1 -f 2 -t 1 -o $cur_dir/tmpResults/all_datasets_expressed_genes_transl -s "\t" 
-        ## Get blacklist (no-expressed genes)
-        # grep -v -w -F -f $cur_dir/tmpResults/all_datasets_expressed_genes $cur_dir/hunterFolders/aldh18a1/aldh18a1_DEA/Common_results/* | cut -f 1 | tail -n +2 > $cur_dir/tmpResults/blacklist
-        # standard_name_replacer.py -I $cur_dir/datasets/ensp_ensg_dict.tsv -i $cur_dir/tmpResults/blacklist -c 1 -f 2 -t 1 -o $cur_dir/tmpResults/blacklist_transl -s "\t"
-	
+        cut -f 1 $cur_dir/hunterFolders/*/*_DEA/filtered_count_data.txt | sort -u | tail -n +2 > $cur_dir/tmpResults/all_datasets_expressed_genes
+        # Translate ENSG (expressed genes) to ENSP (to find matches in STRING interactions)
+        standard_name_replacer.py -I $cur_dir/datasets/ensp_ensg_dict.tsv -i $cur_dir/tmpResults/all_datasets_expressed_genes -c 1 -f 2 -t 1 -o $cur_dir/tmpResults/all_datasets_expressed_genes_transl -s "\t" 
+        # Get blacklist (no-expressed genes)
+        grep -v -w -F -f $cur_dir/tmpResults/all_datasets_expressed_genes $cur_dir/hunterFolders/aldh18a1/aldh18a1_DEA/Common_results/* | cut -f 1 | tail -n +2 > $cur_dir/tmpResults/blacklist
+        standard_name_replacer.py -I $cur_dir/datasets/ensp_ensg_dict.tsv -i $cur_dir/tmpResults/blacklist -c 1 -f 2 -t 1 -o $cur_dir/tmpResults/blacklist_transl -s "\t"
+fi
+
+if [ "$mode" == "3" ]; then
         echo "Prepare networks and select interactions"
         combScores=( 300 950 )
         for m in ${clustering_methods[@]}
@@ -131,57 +137,13 @@ if [ "$mode" == "4" ]; then
         echo "Generate result tables and reports"
         rm -rf final_stats
         mkdir final_stats
-        
-        # mkdir 950_rber_pots_functional_results
-        
-        # echo 'Perform functional enrichment for rber_pots clustering in 950 network'
-        # clusters_to_enrichment.R -i clustering_results/950/cdlib_clusterize.py_0000/rber_pots/rber_pots_cluster_gene_agg.txt -w 16 -o 950_rber_pots_functional_results -f BP,CC,MF,KEGG,Reactome -k ENSEMBL        
-        # exit
-
-       $CODE_PATH/create_tables.rb -i "$cur_dir/hunterFolders/*/*_FEnr" -o final_stats/genes_expression_stats.txt
-        report_html -t templates/html_template.erb -d final_stats/genes_expression_stats.txt
-        
+        path=`ls clustering_results/*/cdlib_clusterize.py_0000/cluster_stats.txt | cut -d ' ' -f 9 | tr "\n" ' '`
+        merge_tabular.py $path > final_stats/all_methods_stats.txt
+        sed -i "1i Param\t300_cpm\t300_leiden\t300_louvain\t300_rber_pots\t300_rb_pots\t950_cpm\t950_leiden\t950_louvain\t950_rber_pots\t950_rb_pots" final_stats/all_methods_stats.txt
+        cluster_genes_path="$cur_dir/clustering_results/*_rber_pots/cdlib_clusterize.py_0000"
+        $CODE_PATH/create_tables.rb -i "$cur_dir/hunterFolders/*/*_FEnr" -o final_stats/genes_expression_stats.txt -g $cur_dir/study_genes -c "$cluster_genes_path" -O $cur_dir/final_stats/output_matches.txt
+        #$CODE_PATH/venndiagrams.R -c -n "`echo $cur_dir/intResults/cut_000*/coexp_genes/* | tr ' ' ","`" -t "`ls $cur_dir/intResults/cut_000*/coexp_genes/* | cut -d '/' -f 14| tr "\n" ','`" -o $cur_dir/plots/vennDiagram_CEG
+        #$CODE_PATH/venndiagrams.R -c -n "`echo $cur_dir/tmpResults/*_CEG_DEG | tr ' ' ","`" -t "`ls $cur_dir/intResults/cut_000*/coexp_genes/* | cut -d '/' -f 14| tr "\n" ','`" -o $cur_dir/plots/vennDiagram_DEG_CEG
+        report_html -t templates/html_template.erb -d final_stats/genes_expression_stats.txt,final_stats/all_methods_stats.txt,final_stats/output_matches.txt
         exit
-
-        for m in ${clustering_methods[@]}
-        do
-                ln -s $cur_dir/clustering_results/950/cdlib_clusterize.py_0000/$m/$m'_cluster_stats.txt' $cur_dir/final_stats_950/$m'_950_cluster_stats.txt'
-                ln -s $cur_dir/clustering_results/300/cdlib_clusterize.py_0000/$m/$m'_cluster_stats.txt' $cur_dir/final_stats_300/$m'_300_cluster_stats.txt'
-        done
-        
-        $CODE_PATH/venndiagrams.R -c -n "`echo $cur_dir/intResults/cut_000*/coexp_genes/* | tr ' ' ","`" -t "`ls $cur_dir/intResults/cut_000*/coexp_genes/* | cut -d '/' -f 14| tr "\n" ','`" -o $cur_dir/plots/vennDiagram_CEG
-        
-        for i in ${datasetsArray[@]}
-        do
-                cat $cur_dir/hunterFolders/*/prevalent_degs/$i $cur_dir/intResults/cut_000*/coexp_genes/$i > tmpResults/$i'_CEG_DEG'
-                # Preparar tabla 1
-                tail -n +2 $cur_dir/hunterFolders/$i/$i"_DEA"/filtered_count_data.txt | wc -l > tmpResults/$i'_expressed_genes'
-                grep 'POSSIBLE_DEG' $cur_dir/hunterFolders/$i/$i'_FEnr/hunter_results_table_annotated.txt' | wc -l > tmpResults/$i'_possible_DEG'
-                grep 'PREVALENT_DEG' $cur_dir/hunterFolders/$i/$i'_FEnr/hunter_results_table_annotated.txt' | wc -l > tmpResults/$i'_prevalent_DEG'
-
-        done
-
-        exit
-
-        $CODE_PATH/venndiagrams.R -c -n "`echo $cur_dir/tmpResults/*_CEG_DEG | tr ' ' ","`" -t "`ls $cur_dir/intResults/cut_000*/coexp_genes/* | cut -d '/' -f 14| tr "\n" ','`" -o $cur_dir/plots/vennDiagram_DEG_CEG
-        
-
-        merge_tabular.py final_stats_300/cpm_300_cluster_stats.txt final_stats_300/louvain_300_cluster_stats.txt final_stats_300/leiden_300_cluster_stats.txt final_stats_300/rber_pots_300_cluster_stats.txt final_stats_300/rb_pots_300_cluster_stats.txt > final_stats_300/all_methods_stats_300.txt
-        merge_tabular.py final_stats_950/cpm_950_cluster_stats.txt final_stats_950/louvain_950_cluster_stats.txt final_stats_950/leiden_950_cluster_stats.txt final_stats_950/rber_pots_950_cluster_stats.txt final_stats_950/rb_pots_950_cluster_stats.txt > final_stats_950/all_methods_stats_950.txt
-        #sed -i "1i Param\tcpm\tlouvain\tleiden\trber_pots\trb_pots" final_stats/all_methods_stats.txt
-        
-        #report_html -t templates/html_template.erb -d final_stats_950/all_methods_stats_950.txt
-        exit
-
-
-
-        #plots=`ls plots | tr "\n" ',' `
-
-        ## Por cada archivo de clústeres de STRING crear tablas como las del artículo
-        # 
-        # for i in ${clustering_methods[@]}
-        # do
-        #         var=`grep $i $cur_dir/clustering_results/index_execution | cut -f 2`
-        #         ln -s $var $cur_dir/hunterFolders/$i
-        # done
 fi

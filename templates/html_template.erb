@@ -22,3 +22,20 @@ datasets analysed. </h2>
 		table.unshift(['Dataset', 'Expressed genes (after CPM filter)', 'Possible DEG', 'Prevalent DEG'])
 	end
 %>
+
+<h2> Table 4. Total number of clusters, maximum size and median size for full (300) and
+confident (conf., 950) PPI networks for the clustering methods. </h2>
+
+<%= table(id: 'all_methods_stats.txt', text: true, header: true) do |table|
+	
+	end
+%>
+
+<h2> Table 5. Assignment of genes SEMA3D, IL33, SQLE, ALDH18A1 and VEGFA to
+STRING clusters. </h2>
+
+<%= table(id: 'output_matches.txt', text: true, header: false) do |table|
+		table.unshift(['Network', 'Study gene', 'Cluster ID', 'Total genes by cluster'])
+	
+	end
+%>

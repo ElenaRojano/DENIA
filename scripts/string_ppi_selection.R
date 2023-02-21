@@ -24,7 +24,7 @@ opt <- parse_args(OptionParser(option_list=option_list))
 ################################################################
 
 # Read human genes interactions from STRING
-human_PPI <- read.table(opt$input_file, header = TRUE, sep="\t")
+human_PPI <- read.table(opt$input_file, header = FALSE, sep="\t")
 
 # We kept interactions for which both proteins are expressed in at least one datasets:
 not_C1 <- read.table(opt$c1_not_expressed, header = FALSE, sep="\t") # 458

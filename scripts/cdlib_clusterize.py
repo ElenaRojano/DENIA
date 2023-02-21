@@ -3,6 +3,7 @@
 import sys
 import traceback
 import argparse
+import numpy as np
 #import optparse
 from networkx import *
 from collections import defaultdict
@@ -17,16 +18,27 @@ except ModuleNotFoundError:
 ## METHODS
 ###################################################################################
 def get_external_coms(file, g, overlaping):
-		coms_to_node = defaultdict(list)
-		f = open(file, 'r')
-		for line in f:
-			fields = line.strip("\n").split("\t")
-			coms_to_node[fields[0]].append(fields[1])
-		coms = [list(c) for c in coms_to_node.values()]
-		communities = NodeClustering(coms, g, "external", method_parameters={}, overlap=overlaping)
-		return communities
+	coms_to_node = read_external_coms(file)
+	coms = [list(c) for c in coms_to_node.values()]
+	communities = NodeClustering(coms, g, "external", method_parameters={}, overlap=overlaping)
+	return communities
 
+def read_external_coms(file):
+	coms_to_node = defaultdict(list)
+	f = open(file, 'r')
+	for line in f:
+		fields = line.strip("\n").split("\t")
+		coms_to_node[fields[0]].append(fields[1])
+	return coms_to_node
 
+def Adjmatrix2Net(Matrix, rowIds, colIds):
+        relations = []
+        G = Graph()
+        for rowPos, rowId in enumerate(rowIds):
+                for colPos, colId in enumerate(rowIds):
+                        associationValue = Matrix[rowPos, colPos]
+                        if associationValue > 0: G.add_edge(rowId, colId, weight=associationValue)
+        return G
 
 def get_stats(graph, communities):
 	#Fitness functions: summarize the characteristics of a computed set of communities.
@@ -58,6 +70,14 @@ def get_stats_by_cluster(graph, communities):
 		cluster_results.append(res)
 	return(metrics, cluster_results)
 
+def get_node_labels(file):
+        f = open(file, 'r')
+        nodes = []
+        for line in f:
+                node = line.strip("\n")
+                nodes.append(node)
+        f.close()
+        return nodes
 
 
 ###################################################################################
@@ -66,7 +86,11 @@ def get_stats_by_cluster(graph, communities):
 if __name__=="__main__":
 	parser = argparse.ArgumentParser(description="usage: %prog [options] arg1 arg2")
 	parser.add_argument("-i", "--input", dest="input",
-		help="File with pairs to cluster")
+		help="Adjacency list or matrix to cluster")
+	parser.add_argument("-t", "--input_type", dest="input_type", default="pair",
+		help="Set input format file. pair or matrix")
+	parser.add_argument("-n","--node_list",dest="nodes", required=False,
+                help="File with the names of each node for matrix input format")
 	parser.add_argument("-e", "--external", dest="external",
 		help="File with external clustering")
 	parser.add_argument("-A", "--clustering_A", dest="clustering_A", default=None,
@@ -93,15 +117,27 @@ if __name__=="__main__":
 
 	print(options, file=sys.stderr)
 	exec('clust_kwargs = {' + options.additional_options +'}') # This allows inject custom arguments for each clustering method
-    	
-	f = open(options.input, 'r')
-	g = nx.Graph()
-	for line in f:
-		fields = line.strip("\n").split("\t")
-		if(options.bipartite):
-			g.add_node(fields[0], bipartite=0)
-			g.add_node(fields[1], bipartite=1)
-		g.add_edge(fields[0], fields[1], weight= float(fields[2]))
+
+	if options.input_type == "pair":
+		f = open(options.input, 'r')
+		g = Graph()
+		for line in f:
+			fields = line.strip("\n").split("\t")
+			if(options.bipartite):
+				g.add_node(fields[0], bipartite=0)
+				g.add_node(fields[1], bipartite=1)
+			g.add_edge(fields[0], fields[1], weight= float(fields[2]))
+	elif(options.input_type == "matrix"):
+		# TODO: Prepare this for bipartite Nets And directed Nets
+		Adj_M=np.load(options.input)
+	
+		if options.nodes is not None:
+		        nodes = get_node_labels(options.nodes)
+		else:
+		        nodes = list(range(0, A.shape[0] + 1))
+		
+		g = Adjmatrix2Net(Adj_M, nodes, nodes)
+
 	print(g.number_of_nodes(), file=sys.stderr)
 	print(g.number_of_edges(), file=sys.stderr)
 
@@ -170,7 +206,8 @@ if __name__=="__main__":
 				warnings.filterwarnings("ignore")
 				communities = algorithms.aslpaw(g)
 		elif(options.method == 'external'):
-			communities = get_external_coms(options.external, g, True)
+			coms_to_node = read_external_coms(options.external)
+			communities  = get_external_coms(options.external, g, True)
 		else:
 			print('Not defined method')
 			sys.exit(0)
@@ -212,6 +249,7 @@ if __name__=="__main__":
 		f.write("\t".join(metrics) + "\n")
 		for cluster_id in range(len(cdlib_coms)):
 			if("coms_to_node" in locals()): # Clustering is external and contains custom labels
+				print("Aqui efectivamente tenemos las labels custom")
 				members = cdlib_coms[cluster_id]
 				clust_label = ''
 				for key, value in coms_to_node.items():
@@ -219,6 +257,7 @@ if __name__=="__main__":
 						clust_label = key
 						break
 			else:
+				print("Aqui no tenemos las labels customs")
 				clust_label = str(cluster_id)
 			cl_metrics = []
 			for metric in results_by_cluster:
