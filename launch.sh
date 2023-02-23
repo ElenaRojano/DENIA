@@ -141,7 +141,9 @@ if [ "$mode" == "4" ]; then
         merge_tabular.py $path > final_stats/all_methods_stats.txt
         sed -i "1i Param\t300_cpm\t300_leiden\t300_louvain\t300_rber_pots\t300_rb_pots\t950_cpm\t950_leiden\t950_louvain\t950_rber_pots\t950_rb_pots" final_stats/all_methods_stats.txt
         cluster_genes_path="$cur_dir/clustering_results/*_rber_pots/cdlib_clusterize.py_0000"
-        $CODE_PATH/create_tables.rb -i "$cur_dir/hunterFolders/*/*_FEnr" -o final_stats/genes_expression_stats.txt -g $cur_dir/study_genes -c "$cluster_genes_path" -O $cur_dir/final_stats/output_matches.txt -n 950 -m rber -d $cur_dir/final_stats/degs_table.txt -e $cur_dir/final_stats/cegs_table.txt -l 'sqle=7;aldh18a1=34;sprout=30;ischaemia=30'
+        $CODE_PATH/create_tables.rb -i "$cur_dir/hunterFolders/*/*_FEnr" -o final_stats/genes_expression_stats.txt -g $cur_dir/study_genes -c "$cluster_genes_path" -O $cur_dir/final_stats/output_matches.txt -n 950 -m rber -d $cur_dir/final_stats/degs_table.txt -e $cur_dir/final_stats/cegs_table.txt -M $cur_dir/final_stats/overlap -l 'sqle=7;aldh18a1=22;sprout=30;ischaemia=9'
+        $CODE_PATH/plot_scatterplot_series.R -d final_stats/overlap_300 -o $cur_dir/plots/overlap300 -x 'Size' -y 'Overlap' -f 'Dataset' -X 'Size' -Y 'Overlap' -F pdf --x_max 350 --x_min 5 --y_max 35
+        $CODE_PATH/plot_scatterplot_series.R -d final_stats/overlap_950 -o $cur_dir/plots/overlap950 -x 'Size' -y 'Overlap' -f 'Dataset' -X 'Size' -Y 'Overlap' -F pdf --x_min 5 --y_max 40
         $CODE_PATH/venndiagrams.R -c -n "`echo $cur_dir/intResults/cut_000*/coexp_genes/* | tr ' ' ","`" -t "`ls $cur_dir/intResults/cut_000*/coexp_genes/* | cut -d '/' -f 14| tr "\n" ','`" -o $cur_dir/plots/vennDiagram_CEG
         $CODE_PATH/venndiagrams.R -c -n "`echo $cur_dir/tmpResults/*_CEG_DEG | tr ' ' ","`" -t "`ls $cur_dir/intResults/cut_000*/coexp_genes/* | cut -d '/' -f 14| tr "\n" ','`" -o $cur_dir/plots/vennDiagram_DEG_CEG
         report_html -t templates/html_template.erb -d final_stats/genes_expression_stats.txt,final_stats/all_methods_stats.txt,final_stats/output_matches.txt,final_stats/cegs_table.txt,final_stats/degs_table.txt

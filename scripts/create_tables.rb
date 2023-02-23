@@ -92,6 +92,11 @@ OptionParser.new do |opts|
     options[:clustering_method] = item
   end
 
+  options[:modules_overlap] = 'modules_overlap'
+  opts.on("-M", "--modules_overlap PATH", "DEG and CEG modules overlap with STRING networks") do |item|
+    options[:modules_overlap] = item
+  end
+
   options[:network_type] = 950
   opts.on("-n", "--network_type STRING", "STRING network type to perform intersection analysis. Please choose: 950 (confident) or 300 (full)") do |item|
     options[:network_type] = item
@@ -179,11 +184,12 @@ network_genes = []
 experiment_genes_clusters = {}
 cegs_by_cluster = {}
 
-
+string_clusters = {}
 Dir.glob(File.join(options[:cluster_files], 'cluster_gene.txt')).each do |file|
 	network_type = file.split('/')[-3].split('_').first
 	clustering_method = file.split('/')[-3].split('_')[1]
 	clusters_genes = load_module_genes(file)
+	string_clusters[network_type] = clusters_genes if clustering_method == options[:clustering_method]
 	saved_data = []
 	clusters_genes.each do |cluster, genes|
 		common_genes = study_genes & genes
@@ -222,6 +228,28 @@ experiment_genes_clusters.each do |study_gene, cluster_data|
 	intersecting_degs_table << [cluster_ID, cluster_genes.length, study_gene].concat(overlaps)
 	intersecting_cegs_table << [cluster_ID, cluster_genes.length, study_gene].concat(m_overlaps)
 end
+
+########################################################################
+string_clusters.each do |network_type, st_cl|
+	overlaps = [['Size', 'Overlap', 'Dataset']]
+	st_cl.each do |cl_id, genes|
+		experiment_degs.each do |experiment, degs|
+			intersecting_genes = (genes & degs).length
+			overlaps << [genes.length, (intersecting_genes.fdiv(genes.length) * 100).round(3), 'DEG_' + experiment]
+		end
+		experiment_cegs.each do |experiment, module_data|
+			module_data.each do |m_id, m_genes|
+				intersecting_genes = (genes & m_genes).length
+				overlaps << [genes.length, (intersecting_genes.fdiv(genes.length) * 100).round(3), "CEG_#{experiment}" ]
+			end
+		end
+	end
+	save_intersecting_table(overlaps, options[:modules_overlap] + '_' + network_type)
+end
+
+
+########################################################################
+
 
 save_intersecting_table(intersecting_degs_table, options[:intersecting_degs])
 save_intersecting_table(intersecting_cegs_table, options[:intersecting_cegs])
