@@ -39,3 +39,23 @@ STRING clusters. </h2>
 	
 	end
 %>
+
+<h2> Table 6. Overlap between clusters of the the PPIs network and DEG lists. The first two
+columns show the STRING cluster ID obtained from using the combined score cut-off of
+950 (rber_pots) and its size. </h2>
+
+<%= table(id: 'degs_table.txt', text: true, header: false) do |table|
+		table.unshift(['ID', 'Size', 'Gene', 'ALDH18A1', 'Ischaemia', 'Sprout', 'SQLE'])
+	
+	end
+%>
+
+<h2> Table 7. Overlap between clusters of the the PPIs network and CEG lists. The first two
+columns show the STRING cluster ID obtained from using the combined score cut-off of
+950 (rber_pots) and its size. </h2>
+
+<%= table(id: 'cegs_table.txt', text: true, header: false) do |table|
+		table.unshift(['ID', 'Size', 'Gene', 'ALDH18A1', 'Ischaemia', 'Sprout', 'SQLE'])
+	
+	end
+%>
